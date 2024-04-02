@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Three.js Game of Life</title>
+    <style>
+        body { margin: 0; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
+    <script>
+        const gridSize = 10;
+        const cellSize = 1;
+        const initialDensity = 0.5; // densidad de celulas con vida (estado inicial)
+        const updateInterval = 600; 
+
+        const scene = new THREE.Scene();
+
+       //configuracion de la camara
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(10, 20, 10);
+        camera.lookAt(0, 0, 0);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+
+// cuadricula 
+        const grid = new THREE.Group();
+        const cellGeometry = new THREE.BoxGeometry(cellSize, 0.1, cellSize);
+        const cellMaterialDead = new THREE.MeshBasicMaterial({ color: 0xCCCCCC });
+        const cellMaterialAlive = new THREE.MeshBasicMaterial({ color: 0x00FF00 });
+
+        const cellMeshes = [];
+
+        for (let i = 0; i < gridSize; i++) {
+            for (let j = 0; j < gridSize; j++) {
+                const cellMesh = new THREE.Mesh(cellGeometry, cellMaterialDead);
+                cellMesh.position.set((i - gridSize / 2) * 1.1, 0, (j - gridSize / 2) * 1.1); // Adjusted position with space between cells
+                cellMeshes.push(cellMesh);
+                grid.add(cellMesh);
+            }
+        }
+        scene.add(grid);
+
+        //logica del juego de la vida
+        let cells = new Array(gridSize).fill().map(() => new Array(gridSize).fill(false));
+
+        function initializeCells() {
+            for (let i = 0; i < gridSize; i++) {
+                for (let j = 0; j < gridSize; j++) {
+                    cells[i][j] = Math.random() < initialDensity;
+                }
+            }
+        }
+
+        function updateCells() {
+            const newCells = new Array(gridSize).fill().map(() => new Array(gridSize).fill(false));
+            for (let i = 0; i < gridSize; i++) {
+                for (let j = 0; j < gridSize; j++) {
+                    const neighbors = countNeighbors(i, j);
+                    if (cells[i][j]) {
+                        newCells[i][j] = neighbors === 2 || neighbors === 3;
+                    } else {
+                        newCells[i][j] = neighbors === 3;
+                    }
+                }
+            }
+            cells = newCells;
+        }
+
+        function countNeighbors(x, y) {
+            let count = 0;
+            for (let i = -1; i <= 1; i++) {
+                for (let j = -1; j <= 1; j++) {
+                    const ni = x + i;
+                    const nj = y + j;
+                    if (ni >= 0 && ni < gridSize && nj >= 0 && nj < gridSize && (i !== 0 || j !== 0)) {
+                        count += cells[ni][nj] ? 1 : 0;
+                    }
+                }
+            }
+            return count;
+        }
+
+        function updateGrid() {
+            cellMeshes.forEach((cellMesh, index) => {
+                const x = index % gridSize;
+                const y = Math.floor(index / gridSize);
+                cellMesh.material = cells[x][y] ? cellMaterialAlive : cellMaterialDead;
+            });
+        }
+
+        initializeCells();
+        updateGrid();
+
+       // controles de orbita 
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.25;
+        controls.enableZoom = true;
+        controls.minDistance = 5;
+        controls.maxDistance = 30;
+
+   
+        function animate() {
+            setTimeout(function() {
+                requestAnimationFrame(animate);
+                controls.update();
+                updateCells();
+                updateGrid();
+                renderer.render(scene, camera);
+            }, updateInterval);
+        }
+
+        animate();
+    </script>
+</body>
+</html>
